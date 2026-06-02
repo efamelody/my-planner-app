@@ -8,10 +8,9 @@ import { useProject } from "@/context/project-context"
 
 const links = [
   { href: "/", label: "Workspace", icon: "📋" },
-  { href: "/goals", label: "Goals", icon: "🎯" },
+  // { href: "/goals", label: "Goals", icon: "🎯" },
   { href: "/progress", label: "Progress", icon: "📊" },
   { href: "/notes", label: "Notes", icon: "📊" },
-
 ]
 
 
