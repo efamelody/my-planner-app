@@ -13,6 +13,9 @@ export interface Task {
   completed: boolean
   pomodoroCount: number
   createdAt: string
+  scheduledDate?: string
+  startTime?: string
+  endTime?: string
 }
 
 export interface Goal {

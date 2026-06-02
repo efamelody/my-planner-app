@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/layout/sidebar"
-import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { ProjectProvider } from "@/context/project-context"
 
 const geistSans = Geist({

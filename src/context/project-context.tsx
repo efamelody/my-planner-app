@@ -16,12 +16,14 @@ interface ProjectContextValue {
   incrementPomodoro: (taskId: string) => void
   addGoal: (title: string, targetDate: string, steps: string[]) => void
   pomodoroSessions: typeof mockPomodoros
+  updateTaskSchedule: (taskId: string, scheduledDate: string, startTime: string, endTime: string) => void
+  updateProjectDates: (projectId: string, startDate: string, endDate: string) => void
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null)
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projects] = useState<Project[]>(mockProjects)
+  const [projects, setProjects] = useState<Project[]>(mockProjects)
   const [activeProjectId, setActiveProjectId] = useState<string | null>(mockProjects[0]?.id ?? null)
   const [tasks, setTasks] = useState<Task[]>(mockTasks)
   const [goals, setGoals] = useState<Goal[]>(mockGoals)
@@ -68,6 +70,28 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     [activeProjectId],
   )
 
+  const updateTaskSchedule = useCallback(
+    (taskId: string, scheduledDate: string, startTime: string, endTime: string) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, scheduledDate, startTime, endTime } : t,
+        ),
+      )
+    },
+    [],
+  )
+
+  const updateProjectDates = useCallback(
+    (projectId: string, startDate: string, endDate: string) => {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId ? { ...p, startDate, endDate } : p,
+        ),
+      )
+    },
+    [],
+  )
+
   return (
     <ProjectContext.Provider
       value={{
@@ -82,6 +106,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         incrementPomodoro,
         addGoal,
         pomodoroSessions,
+        updateTaskSchedule,
+        updateProjectDates,
       }}
     >
       {children}

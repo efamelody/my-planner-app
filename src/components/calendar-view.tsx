@@ -1,135 +1,144 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
+import { DndContext, DragEndEvent, useSensor, PointerSensor, useSensors } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { useProject } from "@/context/project-context"
+import { GanttTimeline } from "./calendar/gantt-timeline"
+import { DailyView } from "./calendar/daily-view"
 
-//TO DO: MAKE IT CONNECT TO GOOGLE CALENDAR
+type ViewMode = "daily" | "weekly" | "monthly"
+
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
+
 export function CalendarView() {
   const today = new Date()
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
+  const [view, setView] = useState<ViewMode>("monthly")
+  const [baseDate, setBaseDate] = useState(today)
+  const { updateTaskSchedule } = useProject()
 
-  // Helper arrays
-  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  const goPrev = useCallback(() => {
+    setBaseDate((d) => {
+      const next = new Date(d)
+      if (view === "daily") next.setDate(next.getDate() - 1)
+      else if (view === "weekly") next.setDate(next.getDate() - 7)
+      else next.setMonth(next.getMonth() - 1)
+      return next
+    })
+  }, [view])
+
+  const goNext = useCallback(() => {
+    setBaseDate((d) => {
+      const next = new Date(d)
+      if (view === "daily") next.setDate(next.getDate() + 1)
+      else if (view === "weekly") next.setDate(next.getDate() + 7)
+      else next.setMonth(next.getMonth() + 1)
+      return next
+    })
+  }, [view])
+
+  const goToday = () => setBaseDate(new Date())
+
+  const getViewRange = () => {
+    if (view === "monthly") {
+      const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1)
+      const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0)
+      return { start, end }
+    }
+    if (view === "weekly") {
+      const d = new Date(baseDate)
+      const day = d.getDay()
+      const diff = day === 0 ? -6 : 1 - day
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6)
+      return { start, end }
+    }
+    return { start: baseDate, end: baseDate }
+  }
+
+  const headerLabel = (() => {
+    if (view === "daily") {
+      return baseDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+    }
+    if (view === "weekly") {
+      const { start, end } = getViewRange()
+      const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      return `${fmt(start)} – ${fmt(end)}`
+    }
+    return `${monthNames[baseDate.getMonth()]} ${baseDate.getFullYear()}`
+  })()
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
+    const activeData = active.data.current
+    const overData = over.data.current
+    if (activeData?.type === "task" && overData?.type === "time-slot") {
+      const startTime = `${String(overData.hour).padStart(2, "0")}:00`
+      const endTime = `${String(overData.hour + 1).padStart(2, "0")}:00`
+      updateTaskSchedule(activeData.taskId, overData.date, startTime, endTime)
+    }
+  }
+
+  const tabs: { key: ViewMode; label: string }[] = [
+    { key: "daily", label: "Daily" },
+    { key: "weekly", label: "Weekly" },
+    { key: "monthly", label: "Monthly" },
   ]
 
-  // Get a solid grid of Date objects
-  const firstDayOfMonth = new Date(year, month, 1)
-  const startOffset = firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1
-  const gridStartDate = new Date(year, month, 1 - startOffset)
-  
-  const daysGrid = Array.from({ length: 35 }, (_, i) => {
-    return new Date(gridStartDate.getFullYear(), gridStartDate.getMonth(), gridStartDate.getDate() + i)
-  })
-
-  // Mocked/Context projects with durations matching your requirements
-  // In a real setup, pull this from your useProject context!
-  const targetProjects = [
-    { id: "1", title: "Main Milestone", start: "2026-06-02", end: "2026-06-07", color: "bg-red-400 text-red-950" },
-    { id: "2", title: "Side Project", start: "2026-06-08", end: "2026-06-10", color: "bg-orange-300 text-orange-950" },
-    { id: "3", title: "2026 Malay", start: "2026-06-10", end: "2026-06-14", color: "bg-purple-200 text-purple-950" }
-  ]
-
-  const prevMonth = () => {
-    if (month === 0) { setYear((y) => y - 1); setMonth(11) }
-    else setMonth((m) => m - 1)
-  }
-
-  const nextMonth = () => {
-    if (month === 11) { setYear((y) => y + 1); setMonth(0) }
-    else setMonth((m) => m + 1)
-  }
-
-  const formatDateString = (date: Date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-  }
+  const { start: rangeStart, end: rangeEnd } = getViewRange()
 
   return (
-    <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      
-      {/* Calendar Header Controls */}
-      <div className="flex items-center justify-between border-b border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          {monthNames[month]} {year}
-        </h2>
-        <div className="flex gap-2">
-          <button onClick={prevMonth} className="rounded-lg border p-1.5 px-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">‹</button>
-          <button onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()) }} className="rounded-lg border p-1.5 px-3 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800">Today</button>
-          <button onClick={nextMonth} className="rounded-lg border p-1.5 px-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">›</button>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+            {headerLabel}
+          </h2>
+
+          {/* View switcher */}
+          <div className="flex items-center gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setView(tab.key)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  view === tab.key
+                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                    : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex gap-2">
+            <button onClick={goPrev} className="rounded-lg border p-1.5 px-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">‹</button>
+            <button onClick={goToday} className="rounded-lg border p-1.5 px-3 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800">Today</button>
+            <button onClick={goNext} className="rounded-lg border p-1.5 px-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">›</button>
+          </div>
+        </div>
+
+        {/* View content */}
+        <div className="overflow-x-auto">
+          {view === "daily" && <DailyView baseDate={baseDate} />}
+          {view !== "daily" && (
+            <GanttTimeline viewStart={rangeStart} viewEnd={rangeEnd} />
+          )}
         </div>
       </div>
-
-      {/* Weekday Label Bar */}
-      <div className="grid grid-cols-7 border-b border-zinc-200 text-center text-xs font-semibold text-zinc-500 dark:border-zinc-800">
-        {dayLabels.map((label) => (
-          <div key={label} className="py-2 border-r border-zinc-100 last:border-none dark:border-zinc-800/50">
-            {label}
-          </div>
-        ))}
-      </div>
-
-      {/* The Core 7x5 Calendar Box Grid */}
-      <div className="grid grid-cols-7 bg-zinc-200 dark:bg-zinc-800 gap-[1px]">
-        {daysGrid.map((date, idx) => {
-          const dateStr = formatDateString(date)
-          const isCurrentMonth = date.getMonth() === month
-          const isToday = formatDateString(today) === dateStr
-
-          // Filter projects active on this specific calendar day
-          const activeBlocks = targetProjects.filter(p => dateStr >= p.start && dateStr <= p.end)
-
-          return (
-            <div 
-              key={idx} 
-              className={cn(
-                "min-h-[110px] bg-white p-1 dark:bg-zinc-900 flex flex-col justify-between transition-colors",
-                !isCurrentMonth && "bg-zinc-50/50 text-zinc-400 dark:bg-zinc-950/40"
-              )}
-            >
-              {/* Day Number Label Indicator */}
-              <div className="flex justify-between items-center p-1">
-                <span 
-                  className={cn(
-                    "text-xs font-medium flex h-6 w-6 items-center justify-center rounded-full",
-                    isToday ? "bg-blue-600 text-white font-bold" : "text-zinc-700 dark:text-zinc-300"
-                  )}
-                >
-                  {date.getDate() === 1 ? `${date.getDate()} ${monthNames[date.getMonth()].slice(0,3)}` : date.getDate()}
-                </span>
-              </div>
-
-              {/* Project Gantt Timeline Content Node Container */}
-              <div className="flex-1 flex flex-col gap-1 justify-end pb-1 overflow-hidden">
-                {activeBlocks.map((project) => {
-                  const isStart = dateStr === project.start
-                  const isEnd = dateStr === project.end
-
-                  return (
-                    <div
-                      key={project.id}
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 truncate font-medium z-10",
-                        project.color,
-                        isStart && "rounded-l-md mx-0.5",
-                        isEnd && "rounded-r-md mx-0.5",
-                        !isStart && !isEnd && "rounded-none"
-                      )}
-                    >
-                      {/* Show title on start date or on Mondays so it stays legible */}
-                      {(isStart || date.getDay() === 1) && project.title}
-                    </div>
-                  )
-                })}
-              </div>
-
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    </DndContext>
   )
 }

@@ -8,15 +8,21 @@ function daysFromNow(days: number): string {
   return d.toISOString().split("T")[0]
 }
 
+function timeStr(hour: number, minute = 0): string {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+}
+
 export const mockProjects: Project[] = [
   { id: "p1", name: "Mathematics", color: "#3b82f6", startDate: daysFromNow(-14), endDate: daysFromNow(45) },
   { id: "p2", name: "Physics", color: "#10b981", startDate: daysFromNow(-7), endDate: daysFromNow(60) },
   { id: "p3", name: "Literature", color: "#f59e0b", startDate: daysFromNow(0), endDate: daysFromNow(90) },
 ]
 
+const todayStr = daysFromNow(0)
+
 export const mockTasks: Task[] = [
-  { id: "t1", projectId: "p1", title: "Review calculus notes", completed: false, pomodoroCount: 2, createdAt: daysFromNow(-3) },
-  { id: "t2", projectId: "p1", title: "Solve integrals worksheet", completed: true, pomodoroCount: 4, createdAt: daysFromNow(-2) },
+  { id: "t1", projectId: "p1", title: "Review calculus notes", completed: false, pomodoroCount: 2, createdAt: daysFromNow(-3), scheduledDate: todayStr, startTime: timeStr(9), endTime: timeStr(10) },
+  { id: "t2", projectId: "p1", title: "Solve integrals worksheet", completed: true, pomodoroCount: 4, createdAt: daysFromNow(-2), scheduledDate: todayStr, startTime: timeStr(10), endTime: timeStr(11) },
   { id: "t3", projectId: "p1", title: "Watch linear algebra lecture", completed: false, pomodoroCount: 0, createdAt: daysFromNow(0) },
   { id: "t4", projectId: "p2", title: "Read kinematics chapter", completed: false, pomodoroCount: 1, createdAt: daysFromNow(-1) },
   { id: "t5", projectId: "p2", title: "Practice force diagrams", completed: false, pomodoroCount: 0, createdAt: daysFromNow(0) },

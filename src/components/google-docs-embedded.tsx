@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export function GoogleDocsWorkspace() {
   // Pre-populated with Chapter and Review dummy data
-  const [docs, setDocs] = useState([
+  const [docs] = useState([
     { title: "Chapter 1: Intro to Next.js", embedUrl: "..." },
     { title: "Literature Review Draft", embedUrl: "..." }
   ])
